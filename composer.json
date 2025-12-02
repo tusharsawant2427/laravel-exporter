@@ -1,0 +1,59 @@
+{
+    "name": "tusharsawant/laravel-exporter",
+    "description": "A fluent, memory-efficient data export package for Laravel supporting CSV, Excel, and JSON formats",
+    "keywords": [
+        "laravel",
+        "export",
+        "csv",
+        "excel",
+        "json",
+        "data-export"
+    ],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Tushar Sawant",
+            "email": "tusharsawant242726@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "illuminate/database": "^10.0|^11.0|^12.0",
+        "symfony/http-foundation": "^6.0|^7.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "pestphp/pest": "^2.0|^3.0",
+        "phpstan/phpstan": "^1.0"
+    },
+    "suggest": {
+        "openspout/openspout": "For native XLSX file support (^4.0)"
+    },
+    "autoload": {
+        "psr-4": {
+            "LaravelExporter\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "LaravelExporter\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "LaravelExporter\\ExporterServiceProvider"
+            ],
+            "aliases": {
+                "Exporter": "LaravelExporter\\Facades\\Exporter"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
