@@ -1,8 +1,11 @@
 title: Laravel Exporter Documentation
 description: A fluent, memory-efficient data export/import package for Laravel
+baseurl: "/laravel-exporter"
+url: "https://tusharsawant2427.github.io"
 theme: jekyll-theme-cayman
 markdown: kramdown
 highlighter: rouge
+permalink: pretty
 
 # Navigation
 nav:

@@ -1,3 +1,8 @@
+---
+layout: default
+title: Home
+---
+
 # Laravel Exporter Documentation
 
 > A fluent, memory-efficient data export/import package for Laravel supporting CSV, Excel, and JSON formats with rich formatting capabilities.
