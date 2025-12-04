@@ -1,5 +1,5 @@
 {
-    "name": "tusharsawant/laravel-exporter",
+    "name": "datasuite/laravel-exporter",
     "description": "A fluent, memory-efficient data export package for Laravel supporting CSV, Excel, and JSON formats",
     "keywords": [
         "laravel",
