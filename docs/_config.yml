@@ -1,0 +1,16 @@
+title: Laravel Exporter Documentation
+description: A fluent, memory-efficient data export/import package for Laravel
+theme: jekyll-theme-cayman
+markdown: kramdown
+highlighter: rouge
+
+# Navigation
+nav:
+  - title: Home
+    url: /
+  - title: Installation
+    url: /installation
+  - title: Quick Start
+    url: /quick-start
+  - title: GitHub
+    url: https://github.com/tusharsawant2427/laravel-exporter
