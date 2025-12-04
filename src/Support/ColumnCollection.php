@@ -294,4 +294,110 @@ class ColumnCollection
     {
         return $this->columns->isNotEmpty();
     }
+
+    // ========================================================================
+    // Conditional Cell Styling Methods (forwarded to last added column)
+    // ========================================================================
+
+    /**
+     * Add conditional styling based on cell value or row data
+     *
+     * @param callable $condition Function that receives ($value, $row) and returns bool
+     * @param CellStyle|callable $style CellStyle or callback that returns CellStyle
+     */
+    public function when(callable $condition, CellStyle|callable $style): static
+    {
+        if ($this->lastAddedKey && $this->columns->has($this->lastAddedKey)) {
+            $this->columns->get($this->lastAddedKey)->when($condition, $style);
+        }
+        return $this;
+    }
+
+    /**
+     * Style when value equals a specific value
+     */
+    public function whenEquals(mixed $compareValue, CellStyle|callable $style): static
+    {
+        if ($this->lastAddedKey && $this->columns->has($this->lastAddedKey)) {
+            $this->columns->get($this->lastAddedKey)->whenEquals($compareValue, $style);
+        }
+        return $this;
+    }
+
+    /**
+     * Style when value is in array of values
+     */
+    public function whenIn(array $values, CellStyle|callable $style): static
+    {
+        if ($this->lastAddedKey && $this->columns->has($this->lastAddedKey)) {
+            $this->columns->get($this->lastAddedKey)->whenIn($values, $style);
+        }
+        return $this;
+    }
+
+    /**
+     * Style when value is greater than threshold
+     */
+    public function whenGreaterThan(float|int $threshold, CellStyle|callable $style): static
+    {
+        if ($this->lastAddedKey && $this->columns->has($this->lastAddedKey)) {
+            $this->columns->get($this->lastAddedKey)->whenGreaterThan($threshold, $style);
+        }
+        return $this;
+    }
+
+    /**
+     * Style when value is less than threshold
+     */
+    public function whenLessThan(float|int $threshold, CellStyle|callable $style): static
+    {
+        if ($this->lastAddedKey && $this->columns->has($this->lastAddedKey)) {
+            $this->columns->get($this->lastAddedKey)->whenLessThan($threshold, $style);
+        }
+        return $this;
+    }
+
+    /**
+     * Style when value is between min and max (inclusive)
+     */
+    public function whenBetween(float|int $min, float|int $max, CellStyle|callable $style): static
+    {
+        if ($this->lastAddedKey && $this->columns->has($this->lastAddedKey)) {
+            $this->columns->get($this->lastAddedKey)->whenBetween($min, $max, $style);
+        }
+        return $this;
+    }
+
+    /**
+     * Style when value is empty/null/zero
+     */
+    public function whenEmpty(CellStyle|callable $style): static
+    {
+        if ($this->lastAddedKey && $this->columns->has($this->lastAddedKey)) {
+            $this->columns->get($this->lastAddedKey)->whenEmpty($style);
+        }
+        return $this;
+    }
+
+    /**
+     * Style when value is not empty
+     */
+    public function whenNotEmpty(CellStyle|callable $style): static
+    {
+        if ($this->lastAddedKey && $this->columns->has($this->lastAddedKey)) {
+            $this->columns->get($this->lastAddedKey)->whenNotEmpty($style);
+        }
+        return $this;
+    }
+
+    /**
+     * Style when value contains a string
+     */
+    public function whenContains(string $needle, CellStyle|callable $style): static
+    {
+        if ($this->lastAddedKey && $this->columns->has($this->lastAddedKey)) {
+            $this->columns->get($this->lastAddedKey)->whenContains($needle, $style);
+        }
+        return $this;
+    }
 }

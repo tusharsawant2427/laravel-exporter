@@ -65,10 +65,64 @@ return [
     |
     */
     'locale' => [
-        'default' => 'en_IN',
-        'currency_symbol' => '₹',
+        'default' => 'en_US',
+        'currency_symbol' => '$',
         'date_format' => 'd-M-Y',
         'datetime_format' => 'd-M-Y H:i:s',
+
+        /*
+        |--------------------------------------------------------------------------
+        | Supported Locales Configuration
+        |--------------------------------------------------------------------------
+        |
+        | Define locale-specific settings for different countries.
+        | You can add more locales as needed.
+        |
+        */
+        'locales' => [
+            'en_US' => [
+                'currency_symbol' => '$',
+                'number_format' => '#,##0.00',
+                'thousand_separator' => ',',
+                'decimal_separator' => '.',
+            ],
+            'en_GB' => [
+                'currency_symbol' => '£',
+                'number_format' => '#,##0.00',
+                'thousand_separator' => ',',
+                'decimal_separator' => '.',
+            ],
+            'en_IN' => [
+                'currency_symbol' => '₹',
+                'number_format' => '#,##,##0.00',  // Indian numbering
+                'thousand_separator' => ',',
+                'decimal_separator' => '.',
+            ],
+            'de_DE' => [
+                'currency_symbol' => '€',
+                'number_format' => '#.##0,00',
+                'thousand_separator' => '.',
+                'decimal_separator' => ',',
+            ],
+            'fr_FR' => [
+                'currency_symbol' => '€',
+                'number_format' => '# ##0,00',
+                'thousand_separator' => ' ',
+                'decimal_separator' => ',',
+            ],
+            'ja_JP' => [
+                'currency_symbol' => '¥',
+                'number_format' => '#,##0',
+                'thousand_separator' => ',',
+                'decimal_separator' => '.',
+            ],
+            'zh_CN' => [
+                'currency_symbol' => '¥',
+                'number_format' => '#,##0.00',
+                'thousand_separator' => ',',
+                'decimal_separator' => '.',
+            ],
+        ],
     ],
 
     /*
@@ -81,11 +135,12 @@ return [
     |
     */
     'number_formats' => [
-        'amount_inr' => '#,##,##0.00',     // Indian numbering (12,34,567.00)
-        'amount_standard' => '#,##0.00',    // Standard (1,234,567.00)
+        'amount' => '#,##0.00',             // Standard format (1,234,567.00)
+        'amount_no_decimals' => '#,##0',    // No decimal places
         'integer' => '#,##0',
         'percentage' => '0.00%',
-        'quantity' => '#,##,##0.00',
+        'quantity' => '#,##0.00',
+        'currency' => '"$"#,##0.00',        // With currency symbol (configurable)
     ],
 
     /*

@@ -25,6 +25,12 @@ class ColumnDefinition
     protected ?string $formula = null;
     protected ?string $numberFormat = null;
 
+    /**
+     * Conditional cell styles
+     * @var array<array{condition: callable, style: CellStyle|callable}>
+     */
+    protected array $conditionalStyles = [];
+
     public function __construct(string $key)
     {
         $this->key = $key;
@@ -234,6 +240,146 @@ class ColumnDefinition
     }
 
     /**
+     * Add conditional styling based on cell value or row data
+     *
+     * @param callable $condition Function that receives ($value, $row) and returns bool
+     * @param CellStyle|callable $style CellStyle or callback that returns CellStyle
+     *
+     * Examples:
+     * ->when(fn($value) => $value > 1000, CellStyle::make()->green()->bold())
+     * ->when(fn($value, $row) => $row['status'] === 'cancelled', CellStyle::make()->red())
+     * ->when(fn($value) => $value < 0, fn() => CellStyle::make()->danger())
+     */
+    public function when(callable $condition, CellStyle|callable $style): static
+    {
+        $this->conditionalStyles[] = [
+            'condition' => $condition,
+            'style' => $style,
+        ];
+        return $this;
+    }
+
+    /**
+     * Style when value equals a specific value
+     */
+    public function whenEquals(mixed $compareValue, CellStyle|callable $style): static
+    {
+        return $this->when(
+            fn($value) => $value === $compareValue,
+            $style
+        );
+    }
+
+    /**
+     * Style when value is in array of values
+     */
+    public function whenIn(array $values, CellStyle|callable $style): static
+    {
+        return $this->when(
+            fn($value) => in_array($value, $values),
+            $style
+        );
+    }
+
+    /**
+     * Style when value is greater than threshold
+     */
+    public function whenGreaterThan(float|int $threshold, CellStyle|callable $style): static
+    {
+        return $this->when(
+            fn($value) => is_numeric($value) && $value > $threshold,
+            $style
+        );
+    }
+
+    /**
+     * Style when value is less than threshold
+     */
+    public function whenLessThan(float|int $threshold, CellStyle|callable $style): static
+    {
+        return $this->when(
+            fn($value) => is_numeric($value) && $value < $threshold,
+            $style
+        );
+    }
+
+    /**
+     * Style when value is between min and max (inclusive)
+     */
+    public function whenBetween(float|int $min, float|int $max, CellStyle|callable $style): static
+    {
+        return $this->when(
+            fn($value) => is_numeric($value) && $value >= $min && $value <= $max,
+            $style
+        );
+    }
+
+    /**
+     * Style when value is empty/null/zero
+     */
+    public function whenEmpty(CellStyle|callable $style): static
+    {
+        return $this->when(
+            fn($value) => empty($value) || $value === 0 || $value === '0',
+            $style
+        );
+    }
+
+    /**
+     * Style when value is not empty
+     */
+    public function whenNotEmpty(CellStyle|callable $style): static
+    {
+        return $this->when(
+            fn($value) => !empty($value) && $value !== 0 && $value !== '0',
+            $style
+        );
+    }
+
+    /**
+     * Style when value contains a string
+     */
+    public function whenContains(string $needle, CellStyle|callable $style): static
+    {
+        return $this->when(
+            fn($value) => is_string($value) && str_contains(strtolower($value), strtolower($needle)),
+            $style
+        );
+    }
+
+    /**
+     * Get conditional styles
+     */
+    public function getConditionalStyles(): array
+    {
+        return $this->conditionalStyles;
+    }
+
+    /**
+     * Check if column has conditional styles
+     */
+    public function hasConditionalStyles(): bool
+    {
+        return !empty($this->conditionalStyles);
+    }
+
+    /**
+     * Get the style for a specific value and row
+     */
+    public function getStyleForValue(mixed $value, array $row = []): ?CellStyle
+    {
+        foreach ($this->conditionalStyles as $conditional) {
+            $condition = $conditional['condition'];
+            $style = $conditional['style'];
+
+            if ($condition($value, $row)) {
+                return is_callable($style) ? $style($value, $row) : $style;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Convert to array for column config
      */
     public function toArray(): array
@@ -275,6 +421,11 @@ class ColumnDefinition
 
         if ($this->numberFormat !== null) {
             $config['number_format'] = $this->numberFormat;
+        }
+
+        if (!empty($this->conditionalStyles)) {
+            $config['conditional_styles'] = $this->conditionalStyles;
+            $config['column_definition'] = $this; // Pass reference for style resolution
         }
 
         return $config;

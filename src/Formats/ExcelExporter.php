@@ -9,6 +9,7 @@ use LaravelExporter\Styling\ExcelStyleBuilder;
 use LaravelExporter\Support\ColumnCollection;
 use LaravelExporter\Support\ReportHeader;
 use LaravelExporter\Support\Sheet;
+use LaravelExporter\Support\CellStyle;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -22,7 +23,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * - Conditional coloring for amounts (green/red)
  * - Report headers (company, title, date range)
  * - Totals row
- * - INR locale formatting
+ * - Multi-locale formatting (US, UK, EU, India, etc.)
  * - Multiple sheets
  */
 class ExcelExporter implements FormatExporterInterface
@@ -31,7 +32,7 @@ class ExcelExporter implements FormatExporterInterface
     protected string $sheetName = 'Sheet1';
     protected array $columnWidths = [];
     protected bool $useOpenSpout = false;
-    protected string $locale = 'en_IN';
+    protected string $locale = 'en_US';
 
     // Enhanced styling options
     protected ?ExcelStyleBuilder $styleBuilder = null;
@@ -205,17 +206,40 @@ class ExcelExporter implements FormatExporterInterface
                 foreach ($values as $index => $value) {
                     $key = $keys[$index] ?? $index;
                     $style = null;
+                    $displayValue = $value;
 
-                    // Check for conditional coloring
-                    if ($this->conditionalColoring && isset($sheetColumnConfig[$key])) {
+                    if (isset($sheetColumnConfig[$key])) {
                         $config = $sheetColumnConfig[$key];
-                        $colorConditional = $config['color_conditional'] ?? false;
 
-                        if ($colorConditional && is_numeric($value)) {
-                            if ($value > 0) {
-                                $style = $positiveStyle;
-                            } elseif ($value < 0) {
-                                $style = $negativeStyle;
+                        // Check for custom conditional cell styles first
+                        if (isset($config['column_definition']) && $config['column_definition']->hasConditionalStyles()) {
+                            $cellStyle = $config['column_definition']->getStyleForValue($value, $row);
+                            if ($cellStyle) {
+                                $style = $this->cellStyleToOpenSpoutStyle($cellStyle, $styleClass);
+
+                                // Handle value transformations
+                                if ($prefix = $cellStyle->getPrefix()) {
+                                    $displayValue = $prefix . $displayValue;
+                                }
+                                if ($suffix = $cellStyle->getSuffix()) {
+                                    $displayValue = $displayValue . $suffix;
+                                }
+                                if ($transform = $cellStyle->getValueTransform()) {
+                                    $displayValue = is_callable($transform) ? $transform($value, $row) : $transform;
+                                }
+                            }
+                        }
+
+                        // Fall back to basic conditional coloring for amounts
+                        if (!$style && $this->conditionalColoring) {
+                            $colorConditional = $config['color_conditional'] ?? false;
+
+                            if ($colorConditional && is_numeric($value)) {
+                                if ($value > 0) {
+                                    $style = $positiveStyle;
+                                } elseif ($value < 0) {
+                                    $style = $negativeStyle;
+                                }
                             }
                         }
                     }
@@ -228,7 +252,7 @@ class ExcelExporter implements FormatExporterInterface
                         }
                     }
 
-                    $cells[] = $style ? $cellClass::fromValue($value, $style) : $cellClass::fromValue($value);
+                    $cells[] = $style ? $cellClass::fromValue($displayValue, $style) : $cellClass::fromValue($displayValue);
                 }
 
                 $writer->addRow(new $rowClass($cells));
@@ -1032,15 +1056,31 @@ class ExcelExporter implements FormatExporterInterface
      */
     protected function getNumberFormat(string $type): string
     {
+        $numberFormat = $this->getLocaleNumberFormat();
+
         return match ($type) {
-            ColumnTypes::AMOUNT, ColumnTypes::AMOUNT_PLAIN, ColumnTypes::QUANTITY =>
-                $this->locale === 'en_IN' ? '#,##,##0.00' : '#,##0.00',
+            ColumnTypes::AMOUNT, ColumnTypes::AMOUNT_PLAIN, ColumnTypes::QUANTITY => $numberFormat,
             ColumnTypes::INTEGER => '#,##0',
             ColumnTypes::PERCENTAGE => '0.00%',
             ColumnTypes::DATE => 'DD-MMM-YYYY',
             ColumnTypes::DATETIME => 'DD-MMM-YYYY HH:MM:SS',
             default => 'General',
         };
+    }
+
+    /**
+     * Get number format based on current locale
+     */
+    protected function getLocaleNumberFormat(): string
+    {
+        $locales = config('exporter.locale.locales', []);
+
+        if (isset($locales[$this->locale]['number_format'])) {
+            return $locales[$this->locale]['number_format'];
+        }
+
+        // Default format
+        return '#,##0.00';
     }
 
     protected function writeXmlWorksheetStart($handle): void
@@ -1202,5 +1242,45 @@ class ExcelExporter implements FormatExporterInterface
             return $filename . $ext;
         }
         return $filename;
+    }
+
+    /**
+     * Convert CellStyle to OpenSpout Style object
+     */
+    protected function cellStyleToOpenSpoutStyle(CellStyle $cellStyle, string $styleClass): mixed
+    {
+        $style = new $styleClass();
+
+        // Font color
+        if ($fontColor = $cellStyle->getFontColor()) {
+            $style->setFontColor($fontColor);
+        }
+
+        // Bold
+        if ($cellStyle->isBold()) {
+            $style->setFontBold();
+        }
+
+        // Italic
+        if ($cellStyle->isItalic()) {
+            $style->setFontItalic();
+        }
+
+        // Underline
+        if ($cellStyle->isUnderline()) {
+            $style->setFontUnderline();
+        }
+
+        // Font size
+        if ($fontSize = $cellStyle->getFontSize()) {
+            $style->setFontSize($fontSize);
+        }
+
+        // Background color
+        if ($bgColor = $cellStyle->getBackgroundColor()) {
+            $style->setBackgroundColor($bgColor);
+        }
+
+        return $style;
     }
 }

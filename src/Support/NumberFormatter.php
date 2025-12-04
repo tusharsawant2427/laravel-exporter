@@ -15,12 +15,12 @@ class NumberFormatter
     /**
      * Default locale for formatting
      */
-    protected string $locale = 'en_IN';
+    protected string $locale = 'en_US';
 
     /**
      * Currency symbol
      */
-    protected string $currencySymbol = '₹';
+    protected string $currencySymbol = '$';
 
     /**
      * Decimal places for amounts
@@ -35,16 +35,42 @@ class NumberFormatter
     }
 
     /**
-     * Format number with Indian numbering system (12,34,567.00)
+     * Format number with locale-specific numbering system
+     *
+     * @param float $number The number to format
+     * @param int $decimals Number of decimal places
+     * @param string|null $locale Locale code (e.g., 'en_US', 'en_IN', 'de_DE')
      */
-    public function formatIndian(float $number, int $decimals = 2): string
+    public function formatWithLocale(float $number, int $decimals = 2, ?string $locale = null): string
     {
+        $locale = $locale ?? $this->locale;
+        $locales = config('exporter.locale.locales', []);
+        $localeConfig = $locales[$locale] ?? [];
+
         $isNegative = $number < 0;
         $number = abs($number);
 
+        // Special handling for Indian numbering (en_IN)
+        if ($locale === 'en_IN') {
+            return $this->formatIndianStyle($number, $decimals, $isNegative);
+        }
+
+        // Standard formatting for other locales
+        $thousandSep = $localeConfig['thousand_separator'] ?? ',';
+        $decimalSep = $localeConfig['decimal_separator'] ?? '.';
+
+        $formatted = number_format($number, $decimals, $decimalSep, $thousandSep);
+
+        return $isNegative ? '-' . $formatted : $formatted;
+    }
+
+    /**
+     * Format number with Indian numbering system (12,34,567.00)
+     */
+    protected function formatIndianStyle(float $number, int $decimals, bool $isNegative): string
+    {
         $formatted = number_format($number, $decimals);
 
-        // Convert to Indian numbering system
         $parts = explode('.', $formatted);
         $intPart = str_replace(',', '', $parts[0]);
         $decPart = $parts[1] ?? str_repeat('0', $decimals);
@@ -66,17 +92,39 @@ class NumberFormatter
     }
 
     /**
-     * Format as INR currency with Indian numbering
+     * Format as currency with locale-specific formatting
+     *
+     * @param float $amount The amount to format
+     * @param bool $includeSymbol Whether to include currency symbol
+     * @param string|null $locale Locale code
      */
-    public function formatINR(float $amount, bool $includeSymbol = true): string
+    public function formatCurrency(float $amount, bool $includeSymbol = true, ?string $locale = null): string
     {
-        $formatted = $this->formatIndian($amount, $this->decimalPlaces);
+        $locale = $locale ?? $this->locale;
+        $formatted = $this->formatWithLocale($amount, $this->decimalPlaces, $locale);
 
         if ($includeSymbol) {
-            return $this->currencySymbol . $formatted;
+            $symbol = $this->getCurrencySymbol($locale);
+            return $symbol . $formatted;
         }
 
         return $formatted;
+    }
+
+    /**
+     * @deprecated Use formatWithLocale() with 'en_IN' locale instead
+     */
+    public function formatIndian(float $number, int $decimals = 2): string
+    {
+        return $this->formatWithLocale($number, $decimals, 'en_IN');
+    }
+
+    /**
+     * @deprecated Use formatCurrency() with 'en_IN' locale instead
+     */
+    public function formatINR(float $amount, bool $includeSymbol = true): string
+    {
+        return $this->formatCurrency($amount, $includeSymbol, 'en_IN');
     }
 
     /**
@@ -147,22 +195,48 @@ class NumberFormatter
     /**
      * Get Excel number format string for a column type
      */
-    public function getExcelFormat(string $type, string $locale = 'en_IN'): string
+    public function getExcelFormat(string $type, string $locale = 'en_US'): string
     {
+        $numberFormat = $this->getLocaleNumberFormat($locale);
+
         return match ($type) {
-            // Indian numbering format for amounts
-            ColumnTypes::AMOUNT, ColumnTypes::AMOUNT_PLAIN => $locale === 'en_IN'
-                ? '#,##,##0.00'
-                : '#,##0.00',
+            ColumnTypes::AMOUNT, ColumnTypes::AMOUNT_PLAIN => $numberFormat,
             ColumnTypes::INTEGER => '#,##0',
-            ColumnTypes::QUANTITY => $locale === 'en_IN'
-                ? '#,##,##0.00'
-                : '#,##0.00',
+            ColumnTypes::QUANTITY => $numberFormat,
             ColumnTypes::PERCENTAGE => '0.00%',
             ColumnTypes::DATE => 'DD-MMM-YYYY',
             ColumnTypes::DATETIME => 'DD-MMM-YYYY HH:MM:SS',
             default => 'General',
         };
+    }
+
+    /**
+     * Get number format based on locale
+     */
+    protected function getLocaleNumberFormat(string $locale): string
+    {
+        $locales = config('exporter.locale.locales', []);
+
+        if (isset($locales[$locale]['number_format'])) {
+            return $locales[$locale]['number_format'];
+        }
+
+        // Default format
+        return '#,##0.00';
+    }
+
+    /**
+     * Get currency symbol for locale
+     */
+    public function getCurrencySymbol(string $locale): string
+    {
+        $locales = config('exporter.locale.locales', []);
+
+        if (isset($locales[$locale]['currency_symbol'])) {
+            return $locales[$locale]['currency_symbol'];
+        }
+
+        return $this->currencySymbol;
     }
 
     /**

@@ -78,7 +78,9 @@ class DataExporter
 
         // Handle Eloquent Builder with chunking for large datasets
         if ($this->source instanceof Builder) {
-            foreach ($this->source->lazy($chunkSize) as $item) {
+            // Use cursor() instead of lazy() to avoid ORDER BY issues with GROUP BY queries
+            // cursor() uses a generator internally and doesn't require ordering
+            foreach ($this->source->cursor() as $item) {
                 $row = $this->processRow($item, $columns, $transformer);
                 if ($firstRow) {
                     $this->extractedHeaders = array_keys($row);

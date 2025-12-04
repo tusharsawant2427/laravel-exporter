@@ -16,7 +16,7 @@ class ExcelStyleBuilder
     protected array $dataStyle = [];
     protected array $totalRowStyle = [];
     protected array $conditionalFormats = [];
-    protected string $locale = 'en_IN';
+    protected string $locale = 'en_US';
     protected bool $freezeHeader = true;
     protected bool $autoFilter = true;
     protected bool $autoSize = true;
@@ -162,19 +162,32 @@ class ExcelStyleBuilder
      */
     public function getNumberFormat(string $type): string
     {
+        $numberFormat = $this->getLocaleNumberFormat();
+
         return match ($type) {
-            ColumnTypes::AMOUNT, ColumnTypes::AMOUNT_PLAIN => $this->locale === 'en_IN'
-                ? '#,##,##0.00'
-                : '#,##0.00',
+            ColumnTypes::AMOUNT, ColumnTypes::AMOUNT_PLAIN => $numberFormat,
             ColumnTypes::INTEGER => '#,##0',
-            ColumnTypes::QUANTITY => $this->locale === 'en_IN'
-                ? '#,##,##0.00'
-                : '#,##0.00',
+            ColumnTypes::QUANTITY => $numberFormat,
             ColumnTypes::PERCENTAGE => '0.00%',
             ColumnTypes::DATE => 'DD-MMM-YYYY',
             ColumnTypes::DATETIME => 'DD-MMM-YYYY HH:MM:SS',
             default => 'General',
         };
+    }
+
+    /**
+     * Get number format based on current locale
+     */
+    protected function getLocaleNumberFormat(): string
+    {
+        $locales = config('exporter.locale.locales', []);
+
+        if (isset($locales[$this->locale]['number_format'])) {
+            return $locales[$this->locale]['number_format'];
+        }
+
+        // Default format
+        return '#,##0.00';
     }
 
     /**

@@ -22,7 +22,7 @@ class Exporter
     protected string $format = 'csv';
     protected string $filename = 'export';
     protected array $formatOptions = [];
-    protected string $locale = 'en_IN';
+    protected string $locale = 'en_US';
     protected bool $conditionalColoring = true;
 
     /**

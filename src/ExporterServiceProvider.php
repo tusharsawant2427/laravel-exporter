@@ -16,6 +16,7 @@ class ExporterServiceProvider extends ServiceProvider
             'exporter'
         );
 
+        // Register the fluent Exporter class
         $this->app->bind(Exporter::class, function ($app) {
             $exporter = new Exporter();
 
@@ -38,6 +39,13 @@ class ExporterServiceProvider extends ServiceProvider
         });
 
         $this->app->alias(Exporter::class, 'exporter');
+
+        // Register the Maatwebsite-style Excel class
+        $this->app->singleton('laravel-exporter', function ($app) {
+            return new Excel();
+        });
+
+        $this->app->alias('laravel-exporter', Excel::class);
     }
 
     /**
@@ -60,6 +68,8 @@ class ExporterServiceProvider extends ServiceProvider
         return [
             Exporter::class,
             'exporter',
+            Excel::class,
+            'laravel-exporter',
         ];
     }
 }

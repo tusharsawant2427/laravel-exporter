@@ -7,6 +7,7 @@ use LaravelExporter\Contracts\FormatExporterInterface;
 use LaravelExporter\ColumnTypes;
 use LaravelExporter\Support\ColumnCollection;
 use LaravelExporter\Support\ReportHeader;
+use LaravelExporter\Support\CellStyle;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -36,7 +37,7 @@ class PhpSpreadsheetExporter implements FormatExporterInterface
     protected bool $includeHeaders = true;
     protected string $sheetName = 'Sheet1';
     protected array $columnWidths = [];
-    protected string $locale = 'en_IN';
+    protected string $locale = 'en_US';
 
     // Column configuration
     protected ?ColumnCollection $columnCollection = null;
@@ -74,7 +75,7 @@ class PhpSpreadsheetExporter implements FormatExporterInterface
         $this->includeHeaders = $options['include_headers'] ?? true;
         $this->sheetName = $options['sheet_name'] ?? 'Sheet1';
         $this->columnWidths = $options['column_widths'] ?? [];
-        $this->locale = $options['locale'] ?? 'en_IN';
+        $this->locale = $options['locale'] ?? 'en_US';
         $this->conditionalColoring = $options['conditional_coloring'] ?? true;
         $this->dynamicConditionalFormatting = $options['dynamic_conditional_formatting'] ?? true;
         $this->freezeHeader = $options['freeze_header'] ?? true;
@@ -268,6 +269,9 @@ class PhpSpreadsheetExporter implements FormatExporterInterface
                 $col = Coordinate::stringFromColumnIndex($colIndex + 1);
                 $cell = $sheet->getCell("{$col}{$currentRow}");
                 $this->setCellValue($cell, $value, $colIndex);
+
+                // Apply conditional cell styles
+                $this->applyConditionalCellStyle($sheet, "{$col}{$currentRow}", $value, $row, $colIndex);
             }
             $currentRow++;
         }
@@ -428,6 +432,105 @@ class PhpSpreadsheetExporter implements FormatExporterInterface
                 break;
             default:
                 $cell->setValue((string) $value);
+        }
+    }
+
+    /**
+     * Apply conditional cell style based on column definition
+     */
+    protected function applyConditionalCellStyle(Worksheet $sheet, string $cellRef, mixed $value, array $row, int $colIndex): void
+    {
+        $columnKeys = array_keys($this->columnConfig);
+        $key = $columnKeys[$colIndex] ?? null;
+
+        if (!$key || !isset($this->columnConfig[$key]['column_definition'])) {
+            return;
+        }
+
+        $columnDef = $this->columnConfig[$key]['column_definition'];
+
+        if (!$columnDef->hasConditionalStyles()) {
+            return;
+        }
+
+        $cellStyle = $columnDef->getStyleForValue($value, $row);
+
+        if (!$cellStyle) {
+            return;
+        }
+
+        $styleArray = [];
+
+        // Apply font color
+        if ($fontColor = $cellStyle->getFontColor()) {
+            $styleArray['font']['color'] = ['rgb' => $fontColor];
+        }
+
+        // Apply bold
+        if ($cellStyle->isBold()) {
+            $styleArray['font']['bold'] = true;
+        }
+
+        // Apply italic
+        if ($cellStyle->isItalic()) {
+            $styleArray['font']['italic'] = true;
+        }
+
+        // Apply underline
+        if ($cellStyle->isUnderline()) {
+            $styleArray['font']['underline'] = true;
+        }
+
+        // Apply font size
+        if ($fontSize = $cellStyle->getFontSize()) {
+            $styleArray['font']['size'] = $fontSize;
+        }
+
+        // Apply background color
+        if ($bgColor = $cellStyle->getBackgroundColor()) {
+            $styleArray['fill'] = [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => $bgColor],
+            ];
+        }
+
+        // Apply alignment
+        if ($alignment = $cellStyle->getAlignment()) {
+            $alignmentMap = [
+                'left' => Alignment::HORIZONTAL_LEFT,
+                'center' => Alignment::HORIZONTAL_CENTER,
+                'right' => Alignment::HORIZONTAL_RIGHT,
+            ];
+            $styleArray['alignment']['horizontal'] = $alignmentMap[$alignment] ?? Alignment::HORIZONTAL_LEFT;
+        }
+
+        if (!empty($styleArray)) {
+            $sheet->getStyle($cellRef)->applyFromArray($styleArray);
+        }
+
+        // Handle value transformation (prefix, suffix, custom value)
+        $cell = $sheet->getCell($cellRef);
+        $displayValue = $value;
+
+        if ($prefix = $cellStyle->getPrefix()) {
+            $displayValue = $prefix . $displayValue;
+        }
+
+        if ($suffix = $cellStyle->getSuffix()) {
+            $displayValue = $displayValue . $suffix;
+        }
+
+        if ($transform = $cellStyle->getValueTransform()) {
+            if (is_callable($transform)) {
+                $displayValue = $transform($value, $row);
+            } else {
+                $displayValue = $transform;
+            }
+        }
+
+        // Only update if value was transformed
+        if ($displayValue !== $value) {
+            $cell->setValue($displayValue);
         }
     }
 
