@@ -95,10 +95,11 @@ class StyledOpenSpoutExporter implements FormatExporterInterface
             hexdec(substr($this->headerBackground, 4, 2))
         ));
 
+        // OpenSpout 4.x uses setters (setFontBold, setFontColor, setBackgroundColor)
         return (new Style())
-            ->withFontBold(true)
-            ->withFontColor($fontColor)
-            ->withBackgroundColor($backgroundColor);
+            ->setFontBold(true)
+            ->setFontColor($fontColor)
+            ->setBackgroundColor($backgroundColor);
     }
 
     protected function createCell($value): Cell
