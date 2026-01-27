@@ -10,6 +10,7 @@ use LaravelExporter\Support\ColumnCollection;
 use LaravelExporter\Support\ReportHeader;
 use LaravelExporter\Support\Sheet;
 use LaravelExporter\Support\CellStyle;
+use OpenSpout\Common\Entity\Style\Color;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -132,24 +133,24 @@ class ExcelExporter implements FormatExporterInterface
         $writer->openToFile($path);
 
         // Prepare reusable styles
-        $headerStyle = new $styleClass();
-        $headerStyle->setFontBold();
-        $headerStyle->setBackgroundColor('4472C4');
-        $headerStyle->setFontColor('FFFFFF');
+        $headerStyle = (new $styleClass())
+            ->withFontBold(true)
+            ->withBackgroundColor(Color::toARGB('4472C4'))
+            ->withFontColor(Color::toARGB('FFFFFF'));
 
-        $titleStyle = new $styleClass();
-        $titleStyle->setFontBold();
-        $titleStyle->setFontSize(14);
+        $titleStyle = (new $styleClass())
+            ->withFontBold(true)
+            ->withFontSize(14);
 
-        $positiveStyle = new $styleClass();
-        $positiveStyle->setFontColor('006600');
+        $positiveStyle = (new $styleClass())
+            ->withFontColor(Color::toARGB('006600'));
 
-        $negativeStyle = new $styleClass();
-        $negativeStyle->setFontColor('CC0000');
+        $negativeStyle = (new $styleClass())
+            ->withFontColor(Color::toARGB('CC0000'));
 
-        $totalStyle = new $styleClass();
-        $totalStyle->setFontBold();
-        $totalStyle->setBackgroundColor('E2EFDA');
+        $totalStyle = (new $styleClass())
+            ->withFontBold(true)
+            ->withBackgroundColor(Color::toARGB('E2EFDA'));
 
         $isFirst = true;
         foreach ($this->sheets as $sheet) {
@@ -618,39 +619,33 @@ class ExcelExporter implements FormatExporterInterface
         $rowClass = 'OpenSpout\Common\Entity\Row';
         $cellClass = 'OpenSpout\Common\Entity\Cell';
         $styleClass = 'OpenSpout\Common\Entity\Style\Style';
-        $colorClass = 'OpenSpout\Common\Entity\Style\Color';
 
         $writer = new $writerClass();
         $writer->openToFile($path);
 
-        // Prepare header style
-        $headerStyle = new $styleClass();
-        $headerStyle->setFontBold();
-        $headerStyle->setBackgroundColor('4472C4');
-        $headerStyle->setFontColor('FFFFFF');
+        $headerStyle = (new $styleClass())
+            ->withFontBold(true)
+            ->withBackgroundColor(Color::toARGB('4472C4'))
+            ->withFontColor(Color::toARGB('FFFFFF'));
 
-        // Prepare positive/negative styles for conditional coloring
-        $positiveStyle = new $styleClass();
-        $positiveStyle->setFontColor('006600'); // Dark green
+        $positiveStyle = (new $styleClass())
+            ->withFontColor(Color::toARGB('006600'));
 
-        $negativeStyle = new $styleClass();
-        $negativeStyle->setFontColor('CC0000'); // Dark red
+        $negativeStyle = (new $styleClass())
+            ->withFontColor(Color::toARGB('CC0000'));
 
-        // Write report header if present
         if ($this->reportHeader) {
-            $titleStyle = new $styleClass();
-            $titleStyle->setFontBold();
-            $titleStyle->setFontSize(14);
+            $titleStyle = (new $styleClass())
+                ->withFontBold(true)
+                ->withFontSize(14);
 
             foreach ($this->reportHeader->getRows() as $row) {
                 $cells = [$cellClass::fromValue($row['text'], $titleStyle)];
                 $writer->addRow(new $rowClass($cells));
             }
-            // Empty row after header
             $writer->addRow(new $rowClass([]));
         }
 
-        // Write column headers
         if ($this->includeHeaders && !empty($headers)) {
             $headerCells = [];
             foreach ($headers as $header) {
@@ -659,10 +654,8 @@ class ExcelExporter implements FormatExporterInterface
             $writer->addRow(new $rowClass($headerCells));
         }
 
-        // Get column keys for conditional coloring lookup
         $columnKeys = array_keys($this->columnConfig);
 
-        // Track totals
         $totals = [];
         if ($this->showTotals) {
             foreach ($headers as $header) {
@@ -670,7 +663,6 @@ class ExcelExporter implements FormatExporterInterface
             }
         }
 
-        // Write data rows with conditional coloring
         foreach ($data as $row) {
             $cells = [];
             $values = array_values($row);
@@ -680,7 +672,6 @@ class ExcelExporter implements FormatExporterInterface
                 $key = $keys[$index] ?? $index;
                 $style = null;
 
-                // Check for conditional coloring
                 if ($this->conditionalColoring && isset($this->columnConfig[$key])) {
                     $config = $this->columnConfig[$key];
                     $colorConditional = $config['color_conditional'] ?? false;
@@ -694,7 +685,6 @@ class ExcelExporter implements FormatExporterInterface
                     }
                 }
 
-                // Accumulate totals
                 if ($this->showTotals && is_numeric($value)) {
                     $header = $headers[$index] ?? $key;
                     if (isset($totals[$header])) {
@@ -708,11 +698,10 @@ class ExcelExporter implements FormatExporterInterface
             $writer->addRow(new $rowClass($cells));
         }
 
-        // Write totals row if enabled
         if ($this->showTotals && !empty($totals)) {
-            $totalStyle = new $styleClass();
-            $totalStyle->setFontBold();
-            $totalStyle->setBackgroundColor('E2EFDA'); // Light green background
+            $totalStyle = (new $styleClass())
+                ->withFontBold(true)
+                ->withBackgroundColor(Color::toARGB('E2EFDA'));
 
             $totalCells = [];
             $isFirst = true;
@@ -1245,6 +1234,19 @@ class ExcelExporter implements FormatExporterInterface
     }
 
     /**
+     * Convert 6-digit RGB color to ARGB accepted by OpenSpout.
+     */
+    protected function toArgb(string $color): string
+    {
+        $trimmed = ltrim($color, '#');
+        if (strlen($trimmed) === 6) {
+            return Color::toARGB($trimmed);
+        }
+
+        return $trimmed;
+    }
+
+    /**
      * Convert CellStyle to OpenSpout Style object
      */
     protected function cellStyleToOpenSpoutStyle(CellStyle $cellStyle, string $styleClass): mixed
@@ -1253,32 +1255,32 @@ class ExcelExporter implements FormatExporterInterface
 
         // Font color
         if ($fontColor = $cellStyle->getFontColor()) {
-            $style->setFontColor($fontColor);
+            $style = $style->withFontColor($this->toArgb($fontColor));
         }
 
         // Bold
         if ($cellStyle->isBold()) {
-            $style->setFontBold();
+            $style = $style->withFontBold(true);
         }
 
         // Italic
         if ($cellStyle->isItalic()) {
-            $style->setFontItalic();
+            $style = $style->withFontItalic(true);
         }
 
         // Underline
         if ($cellStyle->isUnderline()) {
-            $style->setFontUnderline();
+            $style = $style->withFontUnderline(true);
         }
 
         // Font size
         if ($fontSize = $cellStyle->getFontSize()) {
-            $style->setFontSize($fontSize);
+            $style = $style->withFontSize($fontSize);
         }
 
         // Background color
         if ($bgColor = $cellStyle->getBackgroundColor()) {
-            $style->setBackgroundColor($bgColor);
+            $style = $style->withBackgroundColor($this->toArgb($bgColor));
         }
 
         return $style;

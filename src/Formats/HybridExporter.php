@@ -38,6 +38,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class HybridExporter implements FormatExporterInterface
 {
+    private const XML_NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+
     protected bool $includeHeaders = true;
     protected string $sheetName = 'Sheet1';
     protected array $columnWidths = [];
@@ -100,21 +102,25 @@ class HybridExporter implements FormatExporterInterface
         $this->totalRows = 0;
 
         // Create header style
+        $headerFontColor = Color::toARGB(Color::rgb(
+            hexdec(substr($this->headerFontColor, 0, 2)),
+            hexdec(substr($this->headerFontColor, 2, 2)),
+            hexdec(substr($this->headerFontColor, 4, 2))
+        ));
+
+        $headerBgColor = Color::toARGB(Color::rgb(
+            hexdec(substr($this->headerBackground, 0, 2)),
+            hexdec(substr($this->headerBackground, 2, 2)),
+            hexdec(substr($this->headerBackground, 4, 2))
+        ));
+
         $headerStyle = (new Style())
-            ->setFontBold()
-            ->setFontSize(11)
-            ->setFontColor(Color::rgb(
-                hexdec(substr($this->headerFontColor, 0, 2)),
-                hexdec(substr($this->headerFontColor, 2, 2)),
-                hexdec(substr($this->headerFontColor, 4, 2))
-            ))
-            ->setBackgroundColor(Color::rgb(
-                hexdec(substr($this->headerBackground, 0, 2)),
-                hexdec(substr($this->headerBackground, 2, 2)),
-                hexdec(substr($this->headerBackground, 4, 2))
-            ))
-            ->setCellAlignment(CellAlignment::CENTER)
-            ->setCellVerticalAlignment(CellVerticalAlignment::CENTER);
+            ->withFontBold(true)
+            ->withFontSize(11)
+            ->withFontColor($headerFontColor)
+            ->withBackgroundColor($headerBgColor)
+            ->withCellAlignment(CellAlignment::CENTER)
+            ->withCellVerticalAlignment(CellVerticalAlignment::CENTER);
 
         // Write styled headers
         if ($this->includeHeaders && !empty($headers)) {
@@ -208,18 +214,18 @@ class HybridExporter implements FormatExporterInterface
                 $worksheet->removeChild($existingViews);
             }
 
-            $sheetViews = $dom->createElement('sheetViews');
-            $sheetView = $dom->createElement('sheetView');
+            $sheetViews = $this->createSheetElement($dom, 'sheetViews');
+            $sheetView = $this->createSheetElement($dom, 'sheetView');
             $sheetView->setAttribute('workbookViewId', '0');
             $sheetView->setAttribute('tabSelected', '1');
 
-            $pane = $dom->createElement('pane');
+            $pane = $this->createSheetElement($dom, 'pane');
             $pane->setAttribute('ySplit', '1');
             $pane->setAttribute('topLeftCell', 'A2');
             $pane->setAttribute('activePane', 'bottomLeft');
             $pane->setAttribute('state', 'frozen');
 
-            $selection = $dom->createElement('selection');
+            $selection = $this->createSheetElement($dom, 'selection');
             $selection->setAttribute('pane', 'bottomLeft');
             $selection->setAttribute('activeCell', 'A2');
             $selection->setAttribute('sqref', 'A2');
@@ -243,7 +249,7 @@ class HybridExporter implements FormatExporterInterface
                 $existingFilter->parentNode->removeChild($existingFilter);
             }
 
-            $autoFilter = $dom->createElement('autoFilter');
+            $autoFilter = $this->createSheetElement($dom, 'autoFilter');
             $autoFilter->setAttribute('ref', $range);
 
             // Insert after sheetData
@@ -565,10 +571,10 @@ class HybridExporter implements FormatExporterInterface
                 $range
             );
 
-            $conditionalFormatting = $dom->createElement('conditionalFormatting');
+            $conditionalFormatting = $this->createSheetElement($dom, 'conditionalFormatting');
             $conditionalFormatting->setAttribute('sqref', $range);
 
-            $cfRule = $dom->createElement('cfRule');
+            $cfRule = $this->createSheetElement($dom, 'cfRule');
             $cfRule->setAttribute('type', $format['type'] ?? 'cellIs');
             $cfRule->setAttribute('priority', (string) $priority++);
 
@@ -619,13 +625,15 @@ class HybridExporter implements FormatExporterInterface
 
         // Add formula(s) for the condition
         if (isset($format['value'])) {
-            $formula = $dom->createElement('formula', (string) $format['value']);
+            $formula = $this->createSheetElement($dom, 'formula');
+            $formula->nodeValue = (string) $format['value'];
             $cfRule->appendChild($formula);
         }
 
         // For 'between' operator, need two formulas
         if ($operator === 'between' && isset($format['value2'])) {
-            $formula2 = $dom->createElement('formula', (string) $format['value2']);
+            $formula2 = $this->createSheetElement($dom, 'formula');
+            $formula2->nodeValue = (string) $format['value2'];
             $cfRule->appendChild($formula2);
         }
 
@@ -641,7 +649,8 @@ class HybridExporter implements FormatExporterInterface
     protected function addExpressionRule(\DOMDocument $dom, \DOMElement $cfRule, array $format): void
     {
         if (isset($format['formula'])) {
-            $formula = $dom->createElement('formula', $format['formula']);
+            $formula = $this->createSheetElement($dom, 'formula');
+            $formula->nodeValue = $format['formula'];
             $cfRule->appendChild($formula);
         }
 
@@ -655,10 +664,10 @@ class HybridExporter implements FormatExporterInterface
      */
     protected function addColorScaleRule(\DOMDocument $dom, \DOMElement $cfRule, array $format): void
     {
-        $colorScale = $dom->createElement('colorScale');
+        $colorScale = $this->createSheetElement($dom, 'colorScale');
 
         // Minimum value
-        $cfvoMin = $dom->createElement('cfvo');
+        $cfvoMin = $this->createSheetElement($dom, 'cfvo');
         $cfvoMin->setAttribute('type', $format['minType'] ?? 'min');
         if (isset($format['minValue'])) {
             $cfvoMin->setAttribute('val', (string) $format['minValue']);
@@ -667,14 +676,14 @@ class HybridExporter implements FormatExporterInterface
 
         // Mid value (optional - for 3-color scale)
         if (isset($format['midColor'])) {
-            $cfvoMid = $dom->createElement('cfvo');
+            $cfvoMid = $this->createSheetElement($dom, 'cfvo');
             $cfvoMid->setAttribute('type', $format['midType'] ?? 'percentile');
             $cfvoMid->setAttribute('val', (string) ($format['midValue'] ?? 50));
             $colorScale->appendChild($cfvoMid);
         }
 
         // Maximum value
-        $cfvoMax = $dom->createElement('cfvo');
+        $cfvoMax = $this->createSheetElement($dom, 'cfvo');
         $cfvoMax->setAttribute('type', $format['maxType'] ?? 'max');
         if (isset($format['maxValue'])) {
             $cfvoMax->setAttribute('val', (string) $format['maxValue']);
@@ -682,19 +691,19 @@ class HybridExporter implements FormatExporterInterface
         $colorScale->appendChild($cfvoMax);
 
         // Minimum color
-        $colorMin = $dom->createElement('color');
+        $colorMin = $this->createSheetElement($dom, 'color');
         $colorMin->setAttribute('rgb', 'FF' . ($format['minColor'] ?? 'F8696B')); // Default red
         $colorScale->appendChild($colorMin);
 
         // Mid color (optional)
         if (isset($format['midColor'])) {
-            $colorMid = $dom->createElement('color');
+            $colorMid = $this->createSheetElement($dom, 'color');
             $colorMid->setAttribute('rgb', 'FF' . $format['midColor']);
             $colorScale->appendChild($colorMid);
         }
 
         // Maximum color
-        $colorMax = $dom->createElement('color');
+        $colorMax = $this->createSheetElement($dom, 'color');
         $colorMax->setAttribute('rgb', 'FF' . ($format['maxColor'] ?? '63BE7B')); // Default green
         $colorScale->appendChild($colorMax);
 
@@ -706,20 +715,20 @@ class HybridExporter implements FormatExporterInterface
      */
     protected function addDataBarRule(\DOMDocument $dom, \DOMElement $cfRule, array $format): void
     {
-        $dataBar = $dom->createElement('dataBar');
+        $dataBar = $this->createSheetElement($dom, 'dataBar');
 
         // Minimum value
-        $cfvoMin = $dom->createElement('cfvo');
+        $cfvoMin = $this->createSheetElement($dom, 'cfvo');
         $cfvoMin->setAttribute('type', $format['minType'] ?? 'min');
         $dataBar->appendChild($cfvoMin);
 
         // Maximum value
-        $cfvoMax = $dom->createElement('cfvo');
+        $cfvoMax = $this->createSheetElement($dom, 'cfvo');
         $cfvoMax->setAttribute('type', $format['maxType'] ?? 'max');
         $dataBar->appendChild($cfvoMax);
 
         // Bar color
-        $color = $dom->createElement('color');
+        $color = $this->createSheetElement($dom, 'color');
         $color->setAttribute('rgb', 'FF' . ($format['color'] ?? '638EC6')); // Default blue
         $dataBar->appendChild($color);
 
@@ -731,7 +740,7 @@ class HybridExporter implements FormatExporterInterface
      */
     protected function addIconSetRule(\DOMDocument $dom, \DOMElement $cfRule, array $format): void
     {
-        $iconSet = $dom->createElement('iconSet');
+        $iconSet = $this->createSheetElement($dom, 'iconSet');
         $iconSet->setAttribute('iconSet', $format['iconStyle'] ?? '3TrafficLights1');
 
         // Define thresholds (usually 3 or 5 values)
@@ -742,7 +751,7 @@ class HybridExporter implements FormatExporterInterface
         ];
 
         foreach ($thresholds as $threshold) {
-            $cfvo = $dom->createElement('cfvo');
+            $cfvo = $this->createSheetElement($dom, 'cfvo');
             $cfvo->setAttribute('type', $threshold['type'] ?? 'percent');
             if (isset($threshold['val'])) {
                 $cfvo->setAttribute('val', (string) $threshold['val']);
@@ -771,6 +780,14 @@ class HybridExporter implements FormatExporterInterface
         }
 
         return $dom->getElementsByTagName('sheetData')->item(0);
+    }
+
+    /**
+     * Create a worksheet element within the SpreadsheetML namespace
+     */
+    protected function createSheetElement(\DOMDocument $dom, string $name): \DOMElement
+    {
+        return $dom->createElementNS(self::XML_NS, $name);
     }
 
     protected function createCell($value): Cell

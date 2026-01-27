@@ -16,14 +16,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Styled OpenSpout Exporter
- * 
+ *
  * Uses OpenSpout for streaming writes with basic styling support.
  * Much more memory-efficient than PhpSpreadsheet while still supporting:
  * - Bold/italic/underline text
  * - Font colors and background colors
  * - Column widths
  * - Header styling
- * 
+ *
  * Memory usage: ~50MB for 100K+ rows (vs 256MB+ for PhpSpreadsheet)
  */
 class StyledOpenSpoutExporter implements FormatExporterInterface
@@ -35,7 +35,7 @@ class StyledOpenSpoutExporter implements FormatExporterInterface
     protected bool $boldHeaders = true;
     protected string $headerBackground = '4472C4';
     protected string $headerFontColor = 'FFFFFF';
-    
+
     public function __construct(array $options = [])
     {
         $this->includeHeaders = $options['include_headers'] ?? true;
@@ -52,74 +52,73 @@ class StyledOpenSpoutExporter implements FormatExporterInterface
         $options = new Options();
         $writer = new Writer($options);
         $writer->openToFile($path);
-        
+
         // Set sheet name
         $sheet = $writer->getCurrentSheet();
         $sheet->setName($this->sheetName);
-        
+
         // Create header style
         $headerStyle = $this->createHeaderStyle();
-        
-        // Create data style (default)
-        $dataStyle = new Style();
-        
+
         // Write headers
         if ($this->includeHeaders && !empty($headers)) {
-            $headerCells = array_map(fn($h) => Cell\StringCell::fromValue($h), $headers);
-            $headerRow = new Row($headerCells, $headerStyle);
+            $headerCells = array_map(fn($h) => Cell::fromValue($h, $headerStyle), $headers);
+            $headerRow = new Row($headerCells);
             $writer->addRow($headerRow);
         }
-        
+
         // Write data rows
         foreach ($data as $row) {
             $cells = [];
             foreach ($row as $value) {
                 $cells[] = $this->createCell($value);
             }
-            $writer->addRow(new Row($cells, $dataStyle));
+            $writer->addRow(new Row($cells));
         }
-        
+
         $writer->close();
-        
+
         return true;
     }
-    
+
     protected function createHeaderStyle(): Style
     {
-        $style = new Style();
-        $style->setFontBold();
-        $style->setFontColor(Color::rgb(
+        $fontColor = Color::toARGB(Color::rgb(
             hexdec(substr($this->headerFontColor, 0, 2)),
             hexdec(substr($this->headerFontColor, 2, 2)),
             hexdec(substr($this->headerFontColor, 4, 2))
         ));
-        $style->setBackgroundColor(Color::rgb(
+
+        $backgroundColor = Color::toARGB(Color::rgb(
             hexdec(substr($this->headerBackground, 0, 2)),
             hexdec(substr($this->headerBackground, 2, 2)),
             hexdec(substr($this->headerBackground, 4, 2))
         ));
-        
-        return $style;
+
+        return (new Style())
+            ->withFontBold(true)
+            ->withFontColor($fontColor)
+            ->withBackgroundColor($backgroundColor);
     }
-    
+
     protected function createCell($value): Cell
     {
         if (is_null($value)) {
             return Cell\EmptyCell::fromValue('');
         }
-        
+
         if (is_bool($value)) {
             return Cell\BooleanCell::fromValue($value);
         }
-        
+
         if (is_int($value) || is_float($value)) {
             return Cell\NumericCell::fromValue($value);
         }
-        
+
         if ($value instanceof \DateTimeInterface) {
             return Cell\DateTimeCell::fromValue($value);
         }
-        
+
         return Cell\StringCell::fromValue((string) $value);
     }
 
@@ -140,30 +139,29 @@ class StyledOpenSpoutExporter implements FormatExporterInterface
     public function stream(Generator $data, array $headers, string $filename): mixed
     {
         $options = new Options();
-        
-        return new StreamedResponse(function () use ($data, $headers, $options) {
+
+        return new StreamedResponse(function () use ($data, $headers, $options, $filename) {
             $writer = new Writer($options);
-            $writer->openToBrowser($this->ensureExtension('export.xlsx'));
-            
+            $writer->openToBrowser($this->ensureExtension($filename));
+
             $sheet = $writer->getCurrentSheet();
             $sheet->setName($this->sheetName);
-            
+
             $headerStyle = $this->createHeaderStyle();
-            $dataStyle = new Style();
-            
+
             if ($this->includeHeaders && !empty($headers)) {
-                $headerCells = array_map(fn($h) => Cell\StringCell::fromValue($h), $headers);
-                $writer->addRow(new Row($headerCells, $headerStyle));
+                $headerCells = array_map(fn($h) => Cell::fromValue($h, $headerStyle), $headers);
+                $writer->addRow(new Row($headerCells));
             }
-            
+
             foreach ($data as $row) {
                 $cells = [];
                 foreach ($row as $value) {
                     $cells[] = $this->createCell($value);
                 }
-                $writer->addRow(new Row($cells, $dataStyle));
+                $writer->addRow(new Row($cells));
             }
-            
+
             $writer->close();
         }, 200, [
             'Content-Type' => $this->getContentType(),
@@ -171,7 +169,7 @@ class StyledOpenSpoutExporter implements FormatExporterInterface
             'Cache-Control' => 'max-age=0',
         ]);
     }
-    
+
     protected function ensureExtension(string $filename): string
     {
         if (!str_ends_with(strtolower($filename), '.xlsx')) {
