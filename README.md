@@ -456,12 +456,16 @@ return [
 ## Requirements
 
 - PHP 8.1+
-- Laravel 10.x or 11.x
+- Laravel 10.x, 11.x, or 12.x
 
 ## Optional Dependencies
 
-- `openspout/openspout` - For native XLSX file support
+- `openspout/openspout` (^4.0) - For native XLSX file support and cell styling
 - `phpoffice/phpspreadsheet` - For advanced Excel features (formulas, conditional formatting, cell merging)
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.
 
 ## Maatwebsite Excel-Style Exports (NEW!)
 
