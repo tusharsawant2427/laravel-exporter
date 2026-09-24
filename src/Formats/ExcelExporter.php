@@ -134,23 +134,23 @@ class ExcelExporter implements FormatExporterInterface
 
         // Prepare reusable styles
         $headerStyle = (new $styleClass())
-            ->withFontBold(true)
-            ->withBackgroundColor(Color::toARGB('4472C4'))
-            ->withFontColor(Color::toARGB('FFFFFF'));
+            ->setFontBold()
+            ->setBackgroundColor(Color::toARGB('4472C4'))
+            ->setFontColor(Color::toARGB('FFFFFF'));
 
         $titleStyle = (new $styleClass())
-            ->withFontBold(true)
-            ->withFontSize(14);
+            ->setFontBold()
+            ->setFontSize(14);
 
         $positiveStyle = (new $styleClass())
-            ->withFontColor(Color::toARGB('006600'));
+            ->setFontColor(Color::toARGB('006600'));
 
         $negativeStyle = (new $styleClass())
-            ->withFontColor(Color::toARGB('CC0000'));
+            ->setFontColor(Color::toARGB('CC0000'));
 
         $totalStyle = (new $styleClass())
-            ->withFontBold(true)
-            ->withBackgroundColor(Color::toARGB('E2EFDA'));
+            ->setFontBold()
+            ->setBackgroundColor(Color::toARGB('E2EFDA'));
 
         $isFirst = true;
         foreach ($this->sheets as $sheet) {
@@ -624,20 +624,20 @@ class ExcelExporter implements FormatExporterInterface
         $writer->openToFile($path);
 
         $headerStyle = (new $styleClass())
-            ->withFontBold(true)
-            ->withBackgroundColor(Color::toARGB('4472C4'))
-            ->withFontColor(Color::toARGB('FFFFFF'));
+            ->setFontBold()
+            ->setBackgroundColor(Color::toARGB('4472C4'))
+            ->setFontColor(Color::toARGB('FFFFFF'));
 
         $positiveStyle = (new $styleClass())
-            ->withFontColor(Color::toARGB('006600'));
+            ->setFontColor(Color::toARGB('006600'));
 
         $negativeStyle = (new $styleClass())
-            ->withFontColor(Color::toARGB('CC0000'));
+            ->setFontColor(Color::toARGB('CC0000'));
 
         if ($this->reportHeader) {
             $titleStyle = (new $styleClass())
-                ->withFontBold(true)
-                ->withFontSize(14);
+                ->setFontBold()
+                ->setFontSize(14);
 
             foreach ($this->reportHeader->getRows() as $row) {
                 $cells = [$cellClass::fromValue($row['text'], $titleStyle)];
@@ -700,8 +700,8 @@ class ExcelExporter implements FormatExporterInterface
 
         if ($this->showTotals && !empty($totals)) {
             $totalStyle = (new $styleClass())
-                ->withFontBold(true)
-                ->withBackgroundColor(Color::toARGB('E2EFDA'));
+                ->setFontBold()
+                ->setBackgroundColor(Color::toARGB('E2EFDA'));
 
             $totalCells = [];
             $isFirst = true;
@@ -1255,32 +1255,32 @@ class ExcelExporter implements FormatExporterInterface
 
         // Font color
         if ($fontColor = $cellStyle->getFontColor()) {
-            $style = $style->withFontColor($this->toArgb($fontColor));
+            $style = $style->setFontColor($this->toArgb($fontColor));
         }
 
         // Bold
         if ($cellStyle->isBold()) {
-            $style = $style->withFontBold(true);
+            $style = $style->setFontBold();
         }
 
         // Italic
         if ($cellStyle->isItalic()) {
-            $style = $style->withFontItalic(true);
+            $style = $style->setFontItalic();
         }
 
         // Underline
         if ($cellStyle->isUnderline()) {
-            $style = $style->withFontUnderline(true);
+            $style = $style->setFontUnderline();
         }
 
         // Font size
         if ($fontSize = $cellStyle->getFontSize()) {
-            $style = $style->withFontSize($fontSize);
+            $style = $style->setFontSize($fontSize);
         }
 
         // Background color
         if ($bgColor = $cellStyle->getBackgroundColor()) {
-            $style = $style->withBackgroundColor($this->toArgb($bgColor));
+            $style = $style->setBackgroundColor($this->toArgb($bgColor));
         }
 
         return $style;

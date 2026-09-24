@@ -115,12 +115,12 @@ class HybridExporter implements FormatExporterInterface
         ));
 
         $headerStyle = (new Style())
-            ->withFontBold(true)
-            ->withFontSize(11)
-            ->withFontColor($headerFontColor)
-            ->withBackgroundColor($headerBgColor)
-            ->withCellAlignment(CellAlignment::CENTER)
-            ->withCellVerticalAlignment(CellVerticalAlignment::CENTER);
+            ->setFontBold()
+            ->setFontSize(11)
+            ->setFontColor($headerFontColor)
+            ->setBackgroundColor($headerBgColor)
+            ->setCellAlignment(CellAlignment::CENTER)
+            ->setCellVerticalAlignment(CellVerticalAlignment::CENTER);
 
         // Write styled headers
         if ($this->includeHeaders && !empty($headers)) {

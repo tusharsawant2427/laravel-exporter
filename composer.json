@@ -24,6 +24,7 @@
         "symfony/http-foundation": "^6.0|^7.0"
     },
     "require-dev": {
+        "openspout/openspout": "^4.0",
         "orchestra/testbench": "^8.0|^9.0|^10.0",
         "pestphp/pest": "^2.0|^3.0",
         "phpstan/phpstan": "^1.0"
